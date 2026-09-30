@@ -47,7 +47,7 @@
         </div>
         <div style="text-align:center">
           <div id="prompt" class="muted">Bitte Ticket ziehen</div>
-          <div id="nextPreview" class="big">A-001</div>
+          <div id="nextPreview" class="big">PKI 001</div>
           <button id="takeTicket" class="btn primary" style="width:100%">🎟️ Ticket ziehen</button>
           <div id="receipt" class="ticket" style="margin-top:16px"><span class="muted">Noch kein Ticket gezogen.</span></div>
         </div>
@@ -120,7 +120,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const supabase = createClient('https://ymbtrdlvlxoqkaetsxfg.supabase.co','sb_publishable_UQpY57CpozQ0BUDAyp-lQw_oTyZ90TX');
 const $ = id => document.getElementById(id);
-const fmt = n => 'A-' + String(n).padStart(3,'0');
+const fmt = n => 'PKI ' + String(n).padStart(3,'0');
 let state = null;
 let tickets = [];
 let lastReceipt = null;
@@ -227,7 +227,7 @@ $('nextBtn').addEventListener('click',async()=>{const r=await masterRpc('master_
 $('repeatBtn').addEventListener('click',async()=>{const r=await masterRpc('master_repeat');if(r?.ok){showMessage('Aufruf wurde wiederholt.'); await load();}});
 $('finishBtn').addEventListener('click',async()=>{const r=await masterRpc('master_finish');if(r){await load();showMessage('Ticket erledigt.');}});
 $('skipBtn').addEventListener('click',async()=>{const r=await masterRpc('master_skip');if(r){await load();showMessage('Ticket übersprungen.');}});
-$('resetBtn').addEventListener('click',async()=>{if(!confirm('Wirklich Tageszähler zurücksetzen? Die Nummerierung beginnt wieder bei A-001.'))return;const r=await masterRpc('master_reset');if(r){lastReceipt=null;$('receipt').innerHTML='<span class="muted">Noch kein Ticket gezogen.</span>';await load();showMessage('Warteschlange wurde zurückgesetzt.');}});
+$('resetBtn').addEventListener('click',async()=>{if(!confirm('Wirklich Tageszähler zurücksetzen? Die Nummerierung beginnt wieder bei PKI 001.'))return;const r=await masterRpc('master_reset');if(r){lastReceipt=null;$('receipt').innerHTML='<span class="muted">Noch kein Ticket gezogen.</span>';await load();showMessage('Warteschlange wurde zurückgesetzt.');}});
 
 supabase.channel('ticket-live')
  .on('postgres_changes',{event:'*',schema:'public',table:'queue_state'},load)
