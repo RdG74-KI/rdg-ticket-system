@@ -1,1 +1,203 @@
-PLACEHOLDER
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RdG Ticket System</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#edf2f7;background:#0b0d10}
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#0b0d10,#12151a);min-height:100vh;color:#edf2f7}
+    button,input,select{font:inherit}.app{max-width:1180px;margin:auto;padding:20px}.top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .brand{font-weight:800;letter-spacing:.04em}.nav{display:flex;gap:8px;flex-wrap:wrap}.nav a{color:#edf2f7;text-decoration:none;border:1px solid #313842;border-radius:10px;padding:10px 14px}.nav a.active{background:#d6a928;color:#101217;border-color:#d6a928;font-weight:800}
+    .grid{display:grid;gap:16px}.two{grid-template-columns:1.2fr .8fr}@media(max-width:800px){.two{grid-template-columns:1fr}}
+    .card{background:#171b21;border:1px solid #2a3038;border-radius:18px;padding:20px}.muted{color:#9aa6b2}.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:#9aa6b2;font-weight:800}
+    .big{font-size:clamp(54px,10vw,108px);font-weight:900;line-height:1;margin:22px 0}.huge{font-size:clamp(72px,14vw,180px);font-weight:950;line-height:1;margin:18px 0}
+    .btn{border:0;border-radius:12px;padding:15px 18px;font-weight:800;cursor:pointer;min-height:50px}.primary{background:#d6a928;color:#111}.secondary{background:#222831;color:#fff;border:1px solid #39414b}.danger{background:#3a2020;color:#ffdede;border:1px solid #6a3434}
+    .btn:disabled{opacity:.45;cursor:not-allowed}.stack{display:grid;gap:10px}.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.stat{background:#11151a;border-radius:14px;padding:16px;text-align:center}.stat b{font-size:34px;display:block}
+    .ticket{border:1px dashed #4c5663;border-radius:16px;padding:18px;text-align:center}.queue{display:flex;gap:8px;flex-wrap:wrap}.pill{border:1px solid #3a424d;border-radius:10px;padding:9px 11px;font-weight:800}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{min-width:0}.grow{flex:1}.input,.select{background:#0f1318;border:1px solid #39414b;color:#fff;border-radius:10px;padding:12px 13px;min-height:46px}
+    .screen{text-align:center;padding:36px 18px}.counter{font-size:clamp(28px,5vw,58px);font-weight:900}.status{display:inline-flex;align-items:center;gap:8px;color:#b9c3cc}.dot{width:10px;height:10px;border-radius:50%;background:#43c96b}
+    .history{display:grid;gap:8px}.hist{display:flex;justify-content:space-between;gap:12px;background:#11151a;border-radius:10px;padding:10px 12px}.hidden{display:none!important}
+    .notice{padding:12px 14px;border-radius:10px;background:#17231a;border:1px solid #29452f;color:#c9f3cf}.error{background:#2a1717;border-color:#5a2a2a;color:#ffd0d0}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div>
+      <div class="eyebrow">SG PKI · Digital Queue</div>
+      <div class="brand">RdG Ticket System</div>
+    </div>
+    <nav class="nav">
+      <a id="nav-terminal" href="?view=terminal">🎟️ Ticket</a>
+      <a id="nav-master" href="?view=master">👨‍💼 Master</a>
+      <a id="nav-display" href="?view=display">🖥️ Display</a>
+    </nav>
+  </div>
+
+  <div id="message" class="notice hidden"></div>
+
+  <section id="terminal" class="view">
+    <div class="grid two">
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div><div class="eyebrow">Ticket-Terminal</div><h1>Ticket ziehen</h1></div>
+          <select id="language" class="select"><option value="de">Deutsch</option><option value="fr">Français</option><option value="it">Italiano</option><option value="en">English</option></select>
+        </div>
+        <div style="text-align:center">
+          <div id="prompt" class="muted">Bitte Ticket ziehen</div>
+          <div id="nextPreview" class="big">A-001</div>
+          <button id="takeTicket" class="btn primary" style="width:100%">🎟️ Ticket ziehen</button>
+          <div id="receipt" class="ticket" style="margin-top:16px"><span class="muted">Noch kein Ticket gezogen.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Status</div>
+        <div class="stats" style="margin-top:14px">
+          <div class="stat"><b id="waitingStat">0</b><span class="muted">Wartende</span></div>
+          <div class="stat"><b id="calledStat">0</b><span class="muted">Aufgerufen</span></div>
+        </div>
+        <p class="muted">Diese Ansicht kann auf Tablet, PC oder Smartphone geöffnet werden. Alle Geräte nutzen dieselbe Warteschlange.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="master" class="view hidden">
+    <div class="grid two">
+      <div class="card">
+        <div class="eyebrow">Master Console</div>
+        <h1>Schaltersteuerung</h1>
+        <div class="row">
+          <input id="masterPin" class="input grow" type="password" inputmode="numeric" placeholder="Master-PIN">
+          <select id="counterSelect" class="select">
+            <option value="1">Schalter 1</option><option value="2">Schalter 2</option><option value="3">Schalter 3</option><option value="4">Schalter 4</option>
+          </select>
+        </div>
+        <div style="text-align:center;margin-top:16px">
+          <div class="muted">Aktuelle Nummer</div>
+          <div id="masterCurrent" class="big">---</div>
+          <div id="masterCounter" class="counter">Schalter 1</div>
+        </div>
+        <div class="stack" style="margin-top:18px">
+          <button id="nextBtn" class="btn primary">NÄCHSTER ▶</button>
+          <div class="row"><button id="repeatBtn" class="btn secondary grow">🔁 Wiederholen</button><button id="finishBtn" class="btn secondary grow">✅ Erledigt</button></div>
+          <button id="skipBtn" class="btn secondary">⏭ Überspringen</button>
+          <button id="resetBtn" class="btn danger">Tageszähler zurücksetzen</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><div><div class="eyebrow">Warteschlange</div><h2 id="queueCount">0 Tickets warten</h2></div><div class="muted" id="lastTicket">Letztes Ticket: ---</div></div>
+        <div id="queue" class="queue"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="display" class="view hidden">
+    <div class="card screen">
+      <div class="eyebrow">SG PKI · Aufrufsystem</div>
+      <div class="muted" style="margin-top:28px">Bitte Nummer</div>
+      <div id="displayTicket" class="huge">---</div>
+      <div id="displayCounter" class="counter">Bitte warten</div>
+      <div id="displaySub" class="muted" style="margin-top:12px">Ihre Nummer wird automatisch angezeigt.</div>
+    </div>
+    <div class="grid two" style="margin-top:16px">
+      <div class="card"><div class="eyebrow">Letzte Aufrufe</div><div id="history" class="history" style="margin-top:12px"></div></div>
+      <div class="card"><div class="eyebrow">Systemstatus</div><p class="status"><span class="dot"></span> Online · Live synchronisiert</p><p class="muted">Änderungen werden automatisch auf allen geöffneten Geräten aktualisiert.</p></div>
+    </div>
+  </section>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm';
+
+const supabase = createClient('https://ymbtrdlvlxoqkaetsxfg.supabase.co','sb_publishable_UQpY57CpozQ0BUDAyp-lQw_oTyZ90TX');
+const $ = id => document.getElementById(id);
+const fmt = n => 'A-' + String(n).padStart(3,'0');
+let state = null;
+let tickets = [];
+let lastReceipt = null;
+
+const textMap = {
+ de:{prompt:'Bitte Ticket ziehen',btn:'🎟️ Ticket ziehen',your:'Ihre Nummer',ahead:'Vor Ihnen warten'},
+ fr:{prompt:'Veuillez prendre un ticket',btn:'🎟️ Prendre un ticket',your:'Votre numéro',ahead:'Personnes devant vous'},
+ it:{prompt:'Prendere un ticket',btn:'🎟️ Prendi un ticket',your:'Il tuo numero',ahead:'Persone prima di voi'},
+ en:{prompt:'Please take a ticket',btn:'🎟️ Take a ticket',your:'Your number',ahead:'People ahead of you'}
+};
+
+function showMessage(text,isError=false){
+ const el=$('message'); el.textContent=text; el.className='notice'+(isError?' error':'');
+ setTimeout(()=>el.classList.add('hidden'),3500);
+}
+function setView(){
+ const view=new URLSearchParams(location.search).get('view')||'terminal';
+ document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));
+ $(view)?.classList.remove('hidden');
+ document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
+ $('nav-'+view)?.classList.add('active');
+}
+function activeTickets(){return state?tickets.filter(t=>t.service_date===state.service_date&&t.generation===state.generation):[]}
+function render(){
+ if(!state)return;
+ const current=state.current_ticket_id?tickets.find(t=>t.id===state.current_ticket_id):null;
+ const active=activeTickets(), waiting=active.filter(t=>t.status==='waiting').sort((a,b)=>a.number-b.number);
+ $('nextPreview').textContent=fmt(state.next_number);
+ $('waitingStat').textContent=waiting.length;
+ $('calledStat').textContent=active.filter(t=>t.status!=='waiting').length;
+ $('queueCount').textContent=waiting.length+(waiting.length===1?' Ticket wartet':' Tickets warten');
+ $('lastTicket').textContent='Letztes Ticket: '+(state.next_number>1?fmt(state.next_number-1):'---');
+ $('queue').innerHTML=waiting.length?waiting.map(t=>'<span class="pill">'+fmt(t.number)+'</span>').join(''):'<span class="muted">Keine Tickets in der Warteschlange.</span>';
+ $('nextBtn').disabled=waiting.length===0;
+ if(current){
+   $('masterCurrent').textContent=fmt(current.number); $('masterCounter').textContent='Schalter '+(current.counter||state.current_counter||'-');
+   $('displayTicket').textContent=fmt(current.number); $('displayCounter').textContent='Schalter '+(current.counter||state.current_counter||'-');
+   $('displaySub').textContent='Bitte begeben Sie sich zum angegebenen Schalter.';
+ } else {
+   $('masterCurrent').textContent='---'; $('masterCounter').textContent='Schalter '+$('counterSelect').value;
+   $('displayTicket').textContent='---'; $('displayCounter').textContent='Bitte warten'; $('displaySub').textContent='Ihre Nummer wird automatisch angezeigt.';
+ }
+ const hist=active.filter(t=>t.called_at).sort((a,b)=>new Date(b.called_at)-new Date(a.called_at)).slice(0,5);
+ $('history').innerHTML=hist.length?hist.map(t=>'<div class="hist"><strong>'+fmt(t.number)+'</strong><span class="muted">Schalter '+(t.counter||'-')+'</span></div>').join(''):'<span class="muted">Noch keine Nummer aufgerufen.</span>';
+ if(lastReceipt){
+   const lang=textMap[$('language').value]||textMap.de;
+   const ahead=Math.max(0,active.filter(t=>t.status==='waiting'&&t.number<lastReceipt.number).length);
+   $('receipt').innerHTML='<div class="muted">'+lang.your+'</div><div style="font-size:42px;font-weight:900;margin:6px 0">'+fmt(lastReceipt.number)+'</div><div class="muted">'+lang.ahead+': <strong>'+ahead+'</strong></div>';
+ }
+}
+async function load(){
+ const {data:s,error:se}=await supabase.from('queue_state').select('*').eq('id',1).single();
+ if(se){showMessage('Verbindung zur Warteschlange fehlgeschlagen.',true);return}
+ state=s;
+ const {data:t,error:te}=await supabase.from('tickets').select('*').eq('service_date',s.service_date).eq('generation',s.generation).order('number');
+ if(te){showMessage('Tickets konnten nicht geladen werden.',true);return}
+ tickets=t||[]; render();
+}
+$('language').addEventListener('change',e=>{const t=textMap[e.target.value];$('prompt').textContent=t.prompt;$('takeTicket').textContent=t.btn;render()});
+$('counterSelect').addEventListener('change',()=>{if(!state?.current_ticket_id)$('masterCounter').textContent='Schalter '+$('counterSelect').value});
+$('takeTicket').addEventListener('click',async()=>{
+ $('takeTicket').disabled=true;
+ const {data,error}=await supabase.from('tickets').insert({number:0}).select().single();
+ $('takeTicket').disabled=false;
+ if(error){showMessage('Ticket konnte nicht erstellt werden: '+error.message,true);return}
+ lastReceipt=data; await load(); showMessage('Ticket '+fmt(data.number)+' wurde erstellt.');
+});
+async function masterRpc(name,args={}){
+ const pin=$('masterPin').value.trim(); if(!pin){showMessage('Bitte Master-PIN eingeben.',true);return null}
+ const {data,error}=await supabase.rpc(name,{p_pin:pin,...args});
+ if(error){showMessage(error.message.includes('INVALID_MASTER_PIN')?'Master-PIN ist falsch.':error.message,true);return null}
+ return data;
+}
+$('nextBtn').addEventListener('click',async()=>{const r=await masterRpc('master_next',{p_counter:Number($('counterSelect').value)});if(r){if(!r.ok)showMessage('Keine Tickets in der Warteschlange.',true);await load();}});
+$('repeatBtn').addEventListener('click',async()=>{const r=await masterRpc('master_repeat');if(r?.ok){showMessage('Aufruf wurde wiederholt.'); await load();}});
+$('finishBtn').addEventListener('click',async()=>{const r=await masterRpc('master_finish');if(r){await load();showMessage('Ticket erledigt.');}});
+$('skipBtn').addEventListener('click',async()=>{const r=await masterRpc('master_skip');if(r){await load();showMessage('Ticket übersprungen.');}});
+$('resetBtn').addEventListener('click',async()=>{if(!confirm('Wirklich Tageszähler zurücksetzen? Die Nummerierung beginnt wieder bei A-001.'))return;const r=await masterRpc('master_reset');if(r){lastReceipt=null;$('receipt').innerHTML='<span class="muted">Noch kein Ticket gezogen.</span>';await load();showMessage('Warteschlange wurde zurückgesetzt.');}});
+
+supabase.channel('ticket-live')
+ .on('postgres_changes',{event:'*',schema:'public',table:'queue_state'},load)
+ .on('postgres_changes',{event:'*',schema:'public',table:'tickets'},load)
+ .subscribe();
+
+setView(); load();
+</script>
+</body>
+</html>
