@@ -68,9 +68,16 @@
       <div class="card">
         <div class="eyebrow">Master Console</div>
         <h1>Schaltersteuerung</h1>
+        <div id="masterLoginBox" class="row">
+          <input id="masterPin" class="input grow" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Master-PIN">
+          <button id="loginBtn" class="btn primary">Anmelden</button>
+        </div>
+        <div id="masterSessionBox" class="row hidden" style="justify-content:space-between;margin-bottom:12px">
+          <span class="status"><span class="dot"></span><strong>Master angemeldet</strong></span>
+          <button id="logoutBtn" class="btn secondary">Abmelden</button>
+        </div>
         <div class="row">
-          <input id="masterPin" class="input grow" type="password" inputmode="numeric" placeholder="Master-PIN">
-          <select id="counterSelect" class="select">
+          <select id="counterSelect" class="select grow">
             <option value="1">Schalter 1</option><option value="2">Schalter 2</option><option value="3">Schalter 3</option><option value="4">Schalter 4</option>
           </select>
         </div>
@@ -117,6 +124,13 @@ const fmt = n => 'A-' + String(n).padStart(3,'0');
 let state = null;
 let tickets = [];
 let lastReceipt = null;
+const MASTER_TOKEN_KEY='rdg_master_token';
+const masterToken=()=>localStorage.getItem(MASTER_TOKEN_KEY);
+function updateMasterAuth(){
+ const on=!!masterToken();
+ $('masterLoginBox').classList.toggle('hidden',on);
+ $('masterSessionBox').classList.toggle('hidden',!on);
+}
 
 const textMap = {
  de:{prompt:'Bitte Ticket ziehen',btn:'🎟️ Ticket ziehen',your:'Ihre Nummer',ahead:'Vor Ihnen warten'},
@@ -182,11 +196,33 @@ $('takeTicket').addEventListener('click',async()=>{
  lastReceipt=data; await load(); showMessage('Ticket '+fmt(data.number)+' wurde erstellt.');
 });
 async function masterRpc(name,args={}){
- const pin=$('masterPin').value.trim(); if(!pin){showMessage('Bitte Master-PIN eingeben.',true);return null}
- const {data,error}=await supabase.rpc(name,{p_pin:pin,...args});
- if(error){showMessage(error.message.includes('INVALID_MASTER_PIN')?'Master-PIN ist falsch.':error.message,true);return null}
+ const token=masterToken();
+ if(!token){showMessage('Bitte zuerst als Master anmelden.',true);return null}
+ const {data,error}=await supabase.rpc(name+'_session',{p_token:token,...args});
+ if(error){showMessage(error.message,true);return null}
+ if(data?.reason==='LOGIN_REQUIRED'){localStorage.removeItem(MASTER_TOKEN_KEY);updateMasterAuth();showMessage('Master-Sitzung abgelaufen. Bitte neu anmelden.',true);return null}
  return data;
 }
+$('loginBtn').addEventListener('click',async()=>{
+ const pin=$('masterPin').value.trim();
+ if(!pin){showMessage('Bitte Master-PIN eingeben.',true);return}
+ $('loginBtn').disabled=true;
+ const {data,error}=await supabase.rpc('master_login',{p_pin:pin});
+ $('loginBtn').disabled=false;
+ if(error||!data?.ok){showMessage('Master-PIN ist falsch.',true);return}
+ localStorage.setItem(MASTER_TOKEN_KEY,data.token);
+ $('masterPin').value='';
+ updateMasterAuth();
+ showMessage('Master erfolgreich angemeldet.');
+});
+$('masterPin').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click()});
+$('logoutBtn').addEventListener('click',async()=>{
+ const token=masterToken();
+ if(token) await supabase.rpc('master_logout',{p_token:token});
+ localStorage.removeItem(MASTER_TOKEN_KEY);
+ updateMasterAuth();
+ showMessage('Master abgemeldet.');
+});
 $('nextBtn').addEventListener('click',async()=>{const r=await masterRpc('master_next',{p_counter:Number($('counterSelect').value)});if(r){if(!r.ok)showMessage('Keine Tickets in der Warteschlange.',true);await load();}});
 $('repeatBtn').addEventListener('click',async()=>{const r=await masterRpc('master_repeat');if(r?.ok){showMessage('Aufruf wurde wiederholt.'); await load();}});
 $('finishBtn').addEventListener('click',async()=>{const r=await masterRpc('master_finish');if(r){await load();showMessage('Ticket erledigt.');}});
@@ -198,7 +234,7 @@ supabase.channel('ticket-live')
  .on('postgres_changes',{event:'*',schema:'public',table:'tickets'},load)
  .subscribe();
 
-setView(); load();
+setView(); updateMasterAuth(); load();
 </script>
 </body>
 </html>
