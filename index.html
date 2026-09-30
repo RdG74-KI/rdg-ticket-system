@@ -18,7 +18,7 @@
     .ticket{border:1px dashed #4c5663;border-radius:16px;padding:18px;text-align:center}.queue{display:flex;gap:8px;flex-wrap:wrap}.pill{border:1px solid #3a424d;border-radius:10px;padding:9px 11px;font-weight:800}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{min-width:0}.grow{flex:1}.input,.select{background:#0f1318;border:1px solid #39414b;color:#fff;border-radius:10px;padding:12px 13px;min-height:46px}
     .screen{text-align:center;padding:36px 18px}.counter{font-size:clamp(28px,5vw,58px);font-weight:900}.status{display:inline-flex;align-items:center;gap:8px;color:#b9c3cc}.dot{width:10px;height:10px;border-radius:50%;background:#43c96b}
-    .countergrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.counterstate{padding:14px;border-radius:12px;background:#11151a;border:1px solid #303842;text-align:center}.counterstate b{display:block;font-size:18px}.free{color:#75df91}.busy{color:#ff8585}@media(max-width:650px){.countergrid{grid-template-columns:repeat(2,1fr)}}
+    .countergrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.counterstate{padding:14px;border-radius:12px;background:#11151a;border:1px solid #303842;text-align:center}.counterstate b{display:block;font-size:18px}.free{color:#75df91}.busy{color:#ff8585}.waiting{color:#ffd65a}@media(max-width:650px){.countergrid{grid-template-columns:repeat(2,1fr)}}
     .history{display:grid;gap:8px}.hist{display:flex;justify-content:space-between;gap:12px;background:#11151a;border-radius:10px;padding:10px 12px}.hidden{display:none!important}
     .notice{padding:12px 14px;border-radius:10px;background:#17231a;border:1px solid #29452f;color:#c9f3cf}.error{background:#2a1717;border-color:#5a2a2a;color:#ffd0d0}
   </style>
@@ -175,10 +175,13 @@ function render(){
  }
  const hist=active.filter(t=>t.called_at).sort((a,b)=>new Date(b.called_at)-new Date(a.called_at)).slice(0,5);
  $('history').innerHTML=hist.length?hist.map(t=>'<div class="hist"><strong>'+fmt(t.number)+'</strong><span class="muted">Schalter '+(t.counter||'-')+'</span></div>').join(''):'<span class="muted">Noch keine Nummer aufgerufen.</span>';
- const busyCounters=new Set(active.filter(t=>t.status==='called'&&t.counter).map(t=>Number(t.counter)));
+ const now=Date.now();
  const counterHtml=[1,2,3,4].map(n=>{
-   const busy=busyCounters.has(n);
-   return '<div class="counterstate"><b>Schalter '+n+'</b><span class="'+(busy?'busy':'free')+'">'+(busy?'🔴 BESETZT':'🟢 FREI')+'</span></div>';
+   const currentForCounter=active.filter(t=>t.status==='called'&&Number(t.counter)===n).sort((a,b)=>new Date(b.called_at)-new Date(a.called_at))[0];
+   if(!currentForCounter) return '<div class="counterstate"><b>Schalter '+n+'</b><span class="free">🟢 FREI</span></div>';
+   const age=now-new Date(currentForCounter.called_at).getTime();
+   const waiting=age>=5*60*1000;
+   return '<div class="counterstate"><b>Schalter '+n+'</b><span class="'+(waiting?'waiting':'busy')+'">'+(waiting?'🟡 WARTET':'🔴 BESETZT')+'</span><small class="muted" style="display:block;margin-top:5px">'+fmt(currentForCounter.number)+'</small></div>';
  }).join('');
  $('masterCounterStatus').innerHTML=counterHtml;
  $('displayCounterStatus').innerHTML=counterHtml;
@@ -245,6 +248,7 @@ supabase.channel('ticket-live')
  .subscribe();
 
 setView(); updateMasterAuth(); load();
+setInterval(()=>{if(state)render()},15000);
 </script>
 </body>
 </html>
